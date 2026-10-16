@@ -11,6 +11,7 @@ Thumbs.db
 *.swp
 *.swo
 dependencies.lock
+tempFile.py
 
 ### Logs and Caches ###
 *.log
@@ -24,6 +25,7 @@ dist/
 build/
 **/build/
 managed_components/
+__pycache__/
 
 
 ### Environment Variables & Secrets ###
