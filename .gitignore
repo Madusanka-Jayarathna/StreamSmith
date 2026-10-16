@@ -1,0 +1,35 @@
+### OS Files ###
+.DS_Store		
+.DS_Store/
+.DS_Store*
+Thumbs.db		
+
+### Text Editors & IDEs ###
+.vscode/
+.idea/
+!.vscode/extensions.json
+*.swp
+*.swo
+dependencies.lock
+
+### Logs and Caches ###
+*.log
+logs/
+.cache/
+
+### Build & Output Directories ###
+bin/
+obj/
+dist/
+build/
+**/build/
+managed_components/
+
+
+### Environment Variables & Secrets ###
+.env
+venv/
+.venv/
+env/
+sdkconfig
+sdkconfig.*
