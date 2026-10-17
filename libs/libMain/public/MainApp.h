@@ -1,7 +1,24 @@
+// libMain/public/MainApp.h
 #pragma once
-#include <iostream>
+#include <QMainWindow>
+#include <QObject>
+#include <QWidget>
 
-class MainApp {
+class QStackedWidget;
+class MainView;
+class DownloaderView;
+
+class MainApp : public QMainWindow {
+    Q_OBJECT
 public:
-    int run(int& argc, char* argv[]);
+    explicit MainApp(QWidget* parent = nullptr);
+   
+private slots:
+    void showDownloaderView();
+    void showMainView();
+
+private:
+    QStackedWidget* m_stackedWidget{nullptr};
+    MainView* m_mainView{nullptr};
+    DownloaderView* m_downloaderView{nullptr};
 };

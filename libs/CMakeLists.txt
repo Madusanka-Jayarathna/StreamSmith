@@ -1,9 +1,10 @@
-# Create the library component
-add_library(libs
-    libMain/private/MainApp.cpp
-    libMainView/private/MainView.cpp
-    libMainView/public/MainView.h
+file(GLOB_RECURSE LIBS_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp"
 )
+
+add_library(libs ${LIBS_SOURCES})
 
 # Equivalent to PRIV_INCLUDE_DIRS / INCLUDE_DIRS
 # 'PUBLIC' means anyone linking against this library gets this include folder automatically

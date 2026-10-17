@@ -9,6 +9,9 @@ class MainView : public QWidget {
 public:
     explicit MainView(QWidget* parent = nullptr);
 
+signals:
+    void downloadRequested();
+
 private:
     void setupUI();
 };

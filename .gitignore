@@ -22,6 +22,7 @@ logs/
 ### Build & Output Directories ###
 bin/
 obj/
+temp/
 dist/
 build/
 **/build/
