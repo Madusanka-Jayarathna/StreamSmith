@@ -12,6 +12,7 @@ Thumbs.db
 *.swo
 dependencies.lock
 tempFile.py
+temp.cpp
 
 ### Logs and Caches ###
 *.log
