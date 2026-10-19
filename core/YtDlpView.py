@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Madusanka Jayarathna. All rights reserved.
+# Use of this source code is governed by the MIT license.
+
 import os
 import sys
 import threading
@@ -6,7 +9,7 @@ from tkinter import filedialog
 import yt_dlp
 
 
-def format_bytes(bytes_num):
+def formatBytes(bytes_num):
   """Utility to convert raw bytes to human-readable size string."""
   if not bytes_num or bytes_num <= 0:
     return "Unknown size"
@@ -16,226 +19,311 @@ def format_bytes(bytes_num):
     bytes_num /= 1024.0
   return f"{bytes_num:.2f} PB"
 
-#class YtDlpView(ctk.CTkToplevel):
 class YtDlpView(ctk.CTkFrame):
+    print("1")
     def __init__(self, parent, onNavigate):
-        super().__init__(parent)
-        self._onNavigate = onNavigate
+      print("2")
+      super().__init__(parent)
+      self._onNavigate = onNavigate
 
-        #self.title("Second Window")
-        #self.geometry("400x300")
+      self._videoFormats = {}
+      self._audioFormats = {}
+      self._downloadDir = os.path.expanduser("~/Downloads")
 
-        self._label = ctk.CTkLabel(
-            self,
-            text="Second Window",
-            font=ctk.CTkFont(size=18, weight="bold"),
-        )
-        self._label.pack(padx=20, pady=20)
-
-        self._backBtn = ctk.CTkButton(
-            self,
-            text="Back to Main",
-            command=lambda: self._onNavigate("main"),
-        )
-        self._backBtn.pack(padx=20, pady=10)
+      self._createWidgets()
 
 
-      # Data structures for format extraction
-      # Format: label -> {"id": format_id, "size": filesize_in_bytes}
-        self.video_formats = {}
-        self.audio_formats = {}
-        self.download_dir = os.path.expanduser("~/Downloads")
+    def _createWidgets(self):
+      print("3")
+      # Title Frame
+      self._titleFrame = ctk.CTkFrame(self)
+      self._titleFrame.pack(padx=20, pady=10, fill="x")
 
-      # Layout Containers
-        self.create_widgets()
+      # Back Button
+      self._backBtn = ctk.CTkButton(
+          self._titleFrame,
+          text="←",
+          width=35,  # Small button dimensions
+          height=30,
+          command=lambda: self._onNavigate("main"),
+      )
+      self._backBtn.pack(side="left", padx=10, pady=10)
 
-    def create_widgets(self):
       # Header Title
-      self.title_label = ctk.CTkLabel(
-          self,
-          text="Video / Audio Downloader & Converter",
+      self._titleLabel = ctk.CTkLabel(
+          self._titleFrame,
+          text="Video / Audio Downloader", 
           font=ctk.CTkFont(size=22, weight="bold"),
       )
-      self.title_label.pack(padx=20, pady=(20, 10))
+      self._titleLabel.pack(side="left", expand=True, padx=10, pady=10)
+      #self._titleLabel.pack(padx=20, pady=(20, 10))
 
       # URL Frame
-      self.url_frame = ctk.CTkFrame(self)
-      self.url_frame.pack(padx=20, pady=10, fill="x")
+      self._urlFrame = ctk.CTkFrame(self)
+      self._urlFrame.pack(padx=20, pady=10, fill="x")
 
-      self.url_entry = ctk.CTkEntry(
-          self.url_frame,
+      self._urlEntry = ctk.CTkEntry(
+          self._urlFrame,
           placeholder_text="Paste Video / Playlist URL here...",
           width=530,
       )
-      self.url_entry.pack(side="left", padx=(10, 5), pady=10)
+      self._urlEntry.pack(side="left", padx=(10, 5), pady=10)
 
-      self.analyze_btn = ctk.CTkButton(
-          self.url_frame,
+      self._analyzeBtn = ctk.CTkButton(
+          self._urlFrame,
           text="Analyze",
           width=120,
-          command=self.start_analyze_thread,
+          command=self._startAnalyzeThread,
       )
-      self.analyze_btn.pack(side="right", padx=(5, 10), pady=10)
+      self._analyzeBtn.pack(side="right", padx=(5, 10), pady=10)
 
       # Mode Selector Frame
-      self.mode_frame = ctk.CTkFrame(self)
-      self.mode_frame.pack(padx=20, pady=10, fill="x")
+      self._modeFrame = ctk.CTkFrame(self)
+      self._modeFrame.pack(padx=20, pady=10, fill="x")
 
-      self.mode_label = ctk.CTkLabel(
-          self.mode_frame,
+      self._modeLabel = ctk.CTkLabel(
+          self._modeFrame,
           text="Download Mode:",
           font=ctk.CTkFont(weight="bold"),
       )
-      self.mode_label.pack(side="left", padx=10, pady=10)
+      self._modeLabel.pack(side="left", padx=10, pady=10)
 
-      self.mode_option = ctk.CTkOptionMenu(
-          self.mode_frame,
+      self._modeOption = ctk.CTkOptionMenu(
+          self._modeFrame,
           values=["Highest Quality", "Audio Only", "Video Only", "Custom"],
-          command=self.on_mode_change,
+          command=self._onModeChange,
           width=200,
       )
-      self.mode_option.pack(side="right", padx=10, pady=10)
+      self._modeOption.pack(side="right", padx=10, pady=10)
 
       # Qualities Frame
-      self.qualities_frame = ctk.CTkFrame(self)
-      self.qualities_frame.pack(padx=20, pady=10, fill="x")
+      self._qualitiesFrame = ctk.CTkFrame(self)
+      self._qualitiesFrame.pack(padx=20, pady=10, fill="x")
 
       # Video Quality Dropdown
-      self.v_label = ctk.CTkLabel(self.qualities_frame, text="Video Format:")
-      self.v_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
+      self._vLabel = ctk.CTkLabel(self._qualitiesFrame, text="Video Format:")
+      self._vLabel.grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
-      self.video_menu = ctk.CTkOptionMenu(
-          self.qualities_frame,
+      self._videoMenu = ctk.CTkOptionMenu(
+          self._qualitiesFrame,
           values=["Analyze URL first"],
-          command=lambda _: self.update_estimated_size(),
+          command=lambda _: self._updateEstimatedSize(),
           state="disabled",
           width=500,
       )
-      self.video_menu.grid(row=0, column=1, padx=10, pady=10)
+      self._videoMenu.grid(row=0, column=1, padx=10, pady=10)
 
       # Audio Quality Dropdown
-      self.a_label = ctk.CTkLabel(self.qualities_frame, text="Audio Format:")
-      self.a_label.grid(row=1, column=0, padx=10, pady=10, sticky="w")
+      self._aLabel = ctk.CTkLabel(self._qualitiesFrame, text="Audio Format:")
+      self._aLabel.grid(row=1, column=0, padx=10, pady=10, sticky="w")
 
-      self.audio_menu = ctk.CTkOptionMenu(
-          self.qualities_frame,
+      self._audioMenu = ctk.CTkOptionMenu(
+          self._qualitiesFrame,
           values=["Analyze URL first"],
-          command=lambda _: self.update_estimated_size(),
+          command=lambda _: self._updateEstimatedSize(),
           state="disabled",
           width=500,
       )
-      self.audio_menu.grid(row=1, column=1, padx=10, pady=10)
+      self._audioMenu.grid(row=1, column=1, padx=10, pady=10)
 
       # File Size Estimation Display
       self.size_frame = ctk.CTkFrame(self)
       self.size_frame.pack(padx=20, pady=5, fill="x")
 
-      self.size_title_label = ctk.CTkLabel(
+      self._sizeTitleLabel = ctk.CTkLabel(
           self.size_frame,
           text="Approx. File Size:",
           font=ctk.CTkFont(weight="bold"),
       )
-      self.size_title_label.pack(side="left", padx=10, pady=8)
+      self._sizeTitleLabel.pack(side="left", padx=10, pady=8)
 
-      self.size_value_label = ctk.CTkLabel(
+      self._sizeValueLabel = ctk.CTkLabel(
           self.size_frame,
           text="--",
           font=ctk.CTkFont(size=14, weight="bold"),
           text_color="cyan",
       )
-      self.size_value_label.pack(side="left", padx=5, pady=8)
+      self._sizeValueLabel.pack(side="left", padx=5, pady=8)
 
       # Path Selector Frame
-      self.path_frame = ctk.CTkFrame(self)
-      self.path_frame.pack(padx=20, pady=10, fill="x")
+      self._pathFrame = ctk.CTkFrame(self)
+      self._pathFrame.pack(padx=20, pady=10, fill="x")
 
-      self.path_entry = ctk.CTkEntry(self.path_frame, width=540)
-      self.path_entry.insert(0, self.download_dir)
-      self.path_entry.pack(side="left", padx=(10, 5), pady=10)
+      self._pathEntry = ctk.CTkEntry(self._pathFrame, width=540)
+      self._pathEntry.insert(0, self._downloadDir)
+      self._pathEntry.pack(side="left", padx=(10, 5), pady=10)
 
-      self.browse_btn = ctk.CTkButton(
-          self.path_frame,
+      self._browseBtn = ctk.CTkButton(
+          self._pathFrame,
           text="Browse Path",
           width=110,
-          command=self.browse_path,
+          command=self._browsePath,
       )
-      self.browse_btn.pack(side="right", padx=(5, 10), pady=10)
+      self._browseBtn.pack(side="right", padx=(5, 10), pady=10)
 
       # Progress & Action Frame
-      self.progress_bar = ctk.CTkProgressBar(self, width=700)
-      self.progress_bar.set(0)
-      self.progress_bar.pack(padx=20, pady=(10, 5))
+      self._progressBar = ctk.CTkProgressBar(self, width=700)
+      self._progressBar.set(0)
+      self._progressBar.pack(padx=20, pady=(10, 5))
 
-      self.status_label = ctk.CTkLabel(
+      self._statusLabel = ctk.CTkLabel(
           self, text="Status: Ready", text_color="gray"
       )
-      self.status_label.pack(padx=20, pady=5)
+      self._statusLabel.pack(padx=20, pady=5)
 
-      self.download_btn = ctk.CTkButton(
+      self._downloadBtn = ctk.CTkButton(
           self,
           text="Download",
           font=ctk.CTkFont(size=16, weight="bold"),
           height=40,
           width=200,
-          command=self.start_download_thread,
+          command=self._startDownloadThread,
       )
-      self.download_btn.pack(padx=20, pady=(5, 15))
+      self._downloadBtn.pack(padx=20, pady=(5, 15))
 
-      self.on_mode_change("Highest Quality")
+      self._onModeChange("Highest Quality")
 
-    def browse_path(self):
-      selected = filedialog.askdirectory(initialdir=self.download_dir)
+    def _browsePath(self):
+      print("4")
+      selected = filedialog.askdirectory(initialdir=self._downloadDir)
       if selected:
-        self.download_dir = selected
-        self.path_entry.delete(0, "end")
-        self.path_entry.insert(0, self.download_dir)
+        self._downloadDir = selected
+        self._pathEntry.delete(0, "end")
+        self._pathEntry.insert(0, self._downloadDir)
 
-    def on_mode_change(self, selected_mode):
+    def _onModeChange(self, selected_mode):
+      print("5")
       """Enables or disables selector menus based on mode rules and recalculates file size."""
-      has_analyzed = len(self.video_formats) > 0 or len(self.audio_formats) > 0
+      has_analyzed = len(self._videoFormats) > 0 or len(self._audioFormats) > 0
 
       if selected_mode == "Highest Quality":
-        self.video_menu.configure(state="disabled")
-        self.audio_menu.configure(state="disabled")
+        self._videoMenu.configure(state="disabled")
+        self._audioMenu.configure(state="disabled")
       elif selected_mode == "Audio Only":
-        self.video_menu.configure(state="disabled")
-        self.audio_menu.configure(
+        self._videoMenu.configure(state="disabled")
+        self._audioMenu.configure(
             state="normal" if has_analyzed else "disabled"
         )
       elif selected_mode == "Video Only":
-        self.video_menu.configure(state="normal" if has_analyzed else "disabled")
-        self.audio_menu.configure(state="disabled")
+        self._videoMenu.configure(state="normal" if has_analyzed else "disabled")
+        self._audioMenu.configure(state="disabled")
       elif selected_mode == "Custom":
-        self.video_menu.configure(state="normal" if has_analyzed else "disabled")
-        self.audio_menu.configure(
+        self._videoMenu.configure(state="normal" if has_analyzed else "disabled")
+        self._audioMenu.configure(
             state="normal" if has_analyzed else "disabled"
         )
 
-      self.update_estimated_size()
+      self._updateEstimatedSize()
 
-    def start_analyze_thread(self):
-      url = self.url_entry.get().strip()
+    def _startAnalyzeThread(self):
+      print("6")
+      url = self._urlEntry.get().strip()
       if not url:
-        self.status_label.configure(
+        self._statusLabel.configure(
             text="Status: Please paste a URL first", text_color="red"
         )
         return
 
-      self.analyze_btn.configure(state="disabled")
-      self.status_label.configure(
+      self._analyzeBtn.configure(state="disabled")
+      self._statusLabel.configure(
           text="Status: Extracting streams & formats...", text_color="yellow"
       )
-      threading.Thread(target=self.analyze_url, args=(url,), daemon=True).start()
+      threading.Thread(target=self._analyzeUrl, args=(url,), daemon=True).start()
 
-    def analyze_url(self, url):
-      ydl_opts = {"quiet": True, "no_warnings": True}
+    def _analyzeUrl(self, url):
+      print("7")
+      ydl_opts = {
+          "quiet": True,
+          "no_warnings": True,
+          "socket_timeout": 15,      # Stop socket hanging
+          "noplaylist": True,          # Process individual video URLs cleanly
+      }
       try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+          with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+              info = ydl.extract_info(url, download=False)
+              if not info:
+                  raise ValueError("Could not extract video metadata.")
+
+              formats = info.get("formats", [])
+
+              v_formats = {}
+              a_formats = {}
+
+              for f in formats:
+                  f_id = f.get("format_id")
+                  ext = f.get("ext", "N/A")
+                  size_bytes = f.get("filesize") or f.get("filesize_approx") or 0
+                  size_str = (
+                      formatBytes(size_bytes) if size_bytes > 0 else "Unknown size"
+                  )
+
+                  if f.get("vcodec") != "none":
+                      height = f.get("height")
+                      res_str = f"{height}p" if height else f.get("format_note", "N/A")
+                      label = (
+                          f"Video: {res_str} | {ext} | Bitrate: {f.get('tbr', 0)}kbps |"
+                          f" ~{size_str} (ID: {f_id})"
+                      )
+                      v_formats[label] = {"id": f_id, "size": size_bytes}
+
+                  if f.get("acodec") != "none" and f.get("vcodec") == "none":
+                      abr = f.get("abr") or f.get("tbr") or 0
+                      label = (
+                          f"Audio: {ext} | ~{int(abr)} kbps | ~{size_str} (ID: {f_id})"
+                      )
+                      a_formats[label] = {"id": f_id, "size": size_bytes}
+
+              # Safely schedule UI update on the main Tkinter thread
+              self.after(0, self._onAnalysisSuccess, info.get("title", ""), v_formats, a_formats)
+
+      except Exception as e:
+          # Safely schedule error display on the main Tkinter thread
+          self.after(0, self._onAnalysisError, str(e))
+
+
+    def _onAnalysisSuccess(self, title, v_formats, a_formats):
+        """Executes safely on the main GUI event loop."""
+        self._videoFormats = v_formats
+        self._audioFormats = a_formats
+    
+        v_list = list(v_formats.keys()) if v_formats else ["No standalone video found"]
+        a_list = list(a_formats.keys()) if a_formats else ["No standalone audio found"]
+    
+        self._videoMenu.configure(values=v_list)
+        self._videoMenu.set(v_list[0])
+    
+        self._audioMenu.configure(values=a_list)
+        self._audioMenu.set(a_list[0])
+    
+        self._statusLabel.configure(
+            text=f"Status: Analyzed successfully! ({title[:30]}...)",
+            text_color="green",
+        )
+        self._analyzeBtn.configure(state="normal")
+        self._onModeChange(self._modeOption.get())
+    
+    
+    def _onAnalysisError(self, error_msg):
+        """Executes safely on the main GUI event loop."""
+        self._statusLabel.configure(
+            text=f"Analysis Error: {error_msg[:60]}", text_color="red"
+        )
+        self._analyzeBtn.configure(state="normal")
+
+    """
+    def _analyzeUrl(self, url):
+      print("7")
+      ydlOpts = {"quiet": True, 
+                 "no_warnings": True,
+                 "socket_timeout": 15,
+                 "noplaylist": True }
+      try:
+        with yt_dlp.YoutubeDL(ydlOpts) as ydl:
           info = ydl.extract_info(url, download=False)
           formats = info.get("formats", [])
 
-          self.video_formats.clear()
-          self.audio_formats.clear()
+          self._videoFormats.clear()
+          self._audioFormats.clear()
 
           for f in formats:
             f_id = f.get("format_id")
@@ -244,7 +332,7 @@ class YtDlpView(ctk.CTkFrame):
             # Retrieve exact or estimated size from yt-dlp
             size_bytes = f.get("filesize") or f.get("filesize_approx") or 0
             size_str = (
-                format_bytes(size_bytes) if size_bytes > 0 else "Unknown size"
+                formatBytes(size_bytes) if size_bytes > 0 else "Unknown size"
             )
 
             # Separate Video Formats
@@ -255,7 +343,7 @@ class YtDlpView(ctk.CTkFrame):
                   f"Video: {res_str} | {ext} | Bitrate: {f.get('tbr', 0)}kbps |"
                   f" ~{size_str} (ID: {f_id})"
               )
-              self.video_formats[label] = {"id": f_id, "size": size_bytes}
+              self._videoFormats[label] = {"id": f_id, "size": size_bytes}
 
             # Separate Audio Formats
             if f.get("acodec") != "none" and f.get("vcodec") == "none":
@@ -263,70 +351,72 @@ class YtDlpView(ctk.CTkFrame):
               label = (
                   f"Audio: {ext} | ~{int(abr)} kbps | ~{size_str} (ID: {f_id})"
               )
-              self.audio_formats[label] = {"id": f_id, "size": size_bytes}
+              self._audioFormats[label] = {"id": f_id, "size": size_bytes}
 
           v_list = (
-              list(self.video_formats.keys())
-              if self.video_formats
+              list(self._videoFormats.keys())
+              if self._videoFormats
               else ["No standalone video found"]
           )
           a_list = (
-              list(self.audio_formats.keys())
-              if self.audio_formats
+              list(self._audioFormats.keys())
+              if self._audioFormats
               else ["No standalone audio found"]
           )
 
-          self.video_menu.configure(values=v_list)
-          self.video_menu.set(v_list[0])
+          self._videoMenu.configure(values=v_list)
+          self._videoMenu.set(v_list[0])
 
-          self.audio_menu.configure(values=a_list)
-          self.audio_menu.set(a_list[0])
+          self._audioMenu.configure(values=a_list)
+          self._audioMenu.set(a_list[0])
 
-          self.status_label.configure(
+          self._statusLabel.configure(
               text=f"Status: Analyzed successfully! ({info.get('title', '')[:30]}...)",
               text_color="green",
           )
-          self.on_mode_change(self.mode_option.get())
+          self._onModeChange(self._modeOption.get())
 
       except Exception as e:
-        self.status_label.configure(
+        self._statusLabel.configure(
             text=f"Analysis Error: {str(e)[:60]}", text_color="red"
         )
       finally:
-        self.analyze_btn.configure(state="normal")
+        self._analyzeBtn.configure(state="normal")
+        """
 
-    def update_estimated_size(self):
+    def _updateEstimatedSize(self):
+      print("8")
       """Calculates combined file size based on selected mode and options."""
-      mode = self.mode_option.get()
+      mode = self._modeOption.get()
 
-      if not self.video_formats and not self.audio_formats:
-        self.size_value_label.configure(text="--")
+      if not self._videoFormats and not self._audioFormats:
+        self._sizeValueLabel.configure(text="--")
         return
 
       v_size = 0
       a_size = 0
 
-      selected_v_key = self.video_menu.get()
-      selected_a_key = self.audio_menu.get()
+      selected_v_key = self._videoMenu.get()
+      selected_a_key = self._audioMenu.get()
 
-      if selected_v_key in self.video_formats:
-        v_size = self.video_formats[selected_v_key]["size"]
+      if selected_v_key in self._videoFormats:
+        v_size = self._videoFormats[selected_v_key]["size"]
 
-      if selected_a_key in self.audio_formats:
-        a_size = self.audio_formats[selected_a_key]["size"]
+      if selected_a_key in self._audioFormats:
+        a_size = self._audioFormats[selected_a_key]["size"]
 
       total_bytes = 0
 
       if mode == "Highest Quality":
         # Take highest known sizes or sum defaults
         v_max = (
-            max([item["size"] for item in self.video_formats.values()])
-            if self.video_formats
+            max([item["size"] for item in self._videoFormats.values()])
+            if self._videoFormats
             else 0
         )
         a_max = (
-            max([item["size"] for item in self.audio_formats.values()])
-            if self.audio_formats
+            max([item["size"] for item in self._audioFormats.values()])
+            if self._audioFormats
             else 0
         )
         total_bytes = v_max + a_max
@@ -341,106 +431,108 @@ class YtDlpView(ctk.CTkFrame):
         total_bytes = v_size + a_size
 
       if total_bytes > 0:
-        self.size_value_label.configure(text=format_bytes(total_bytes))
+        self._sizeValueLabel.configure(text=formatBytes(total_bytes))
       else:
-        self.size_value_label.configure(text="Unknown / Variable")
+        self._sizeValueLabel.configure(text="Unknown / Variable")
 
-    def start_download_thread(self):
-      url = self.url_entry.get().strip()
-      target_path = self.path_entry.get().strip()
+    def _startDownloadThread(self):
+      url = self._urlEntry.get().strip()
+      target_path = self._pathEntry.get().strip()
 
       if not url or not target_path:
-        self.status_label.configure(
+        self._statusLabel.configure(
             text="Status: Please check URL and download path", text_color="red"
         )
         return
 
-      self.download_btn.configure(state="disabled")
-      self.status_label.configure(
+      self._downloadBtn.configure(state="disabled")
+      self._statusLabel.configure(
           text="Status: Initializing download...", text_color="yellow"
       )
 
       threading.Thread(
-          target=self.run_download, args=(url, target_path), daemon=True
+          target=self._runDownload, args=(url, target_path), daemon=True
       ).start()
 
-    def progress_hook(self, d):
+    def _progressHook(self, d):
+      print("9")
       if d["status"] == "downloading":
         total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate", 0)
         downloaded = d.get("downloaded_bytes", 0)
         if total_bytes > 0:
           percent = downloaded / total_bytes
-          self.progress_bar.set(percent)
-          self.status_label.configure(
+          self._progressBar.set(percent)
+          self._statusLabel.configure(
               text=f"Status: Downloading... {percent * 100:.1f}%",
               text_color="cyan",
           )
       elif d["status"] == "finished":
-        self.progress_bar.set(1.0)
-        self.status_label.configure(
+        self._progressBar.set(1.0)
+        self._statusLabel.configure(
             text="Status: Merging/Converting with FFmpeg...", text_color="cyan"
         )
 
-    def run_download(self, url, save_path):
-      mode = self.mode_option.get()
+    def _runDownload(self, url, save_path):
+      print("10")
+      mode = self._modeOption.get()
 
       out_template = os.path.join(save_path, "%(title)s.%(ext)s")
-      ydl_opts = {
+      ydlOpts = {
           "outtmpl": out_template,
-          "progress_hooks": [self.progress_hook],
+          "progress_hooks": [self._progressHook],
       }
 
       if mode == "Highest Quality":
-        ydl_opts["format"] = "bestvideo+bestaudio/best"
-        ydl_opts["merge_output_format"] = "mp4"
+        ydlOpts["format"] = "bestvideo+bestaudio/best"
+        ydlOpts["merge_output_format"] = "mp4"
 
       elif mode == "Audio Only":
-        selected_a = self.audio_menu.get()
-        a_data = self.audio_formats.get(selected_a)
-        ydl_opts["format"] = (
-            a_data["id"] if a_data and a_data.get("id") else "bestaudio/best"
+        selected_a = self._audioMenu.get()
+        aData = self._audioFormats.get(selected_a)
+        ydlOpts["format"] = (
+            aData["id"] if aData and aData.get("id") else "bestaudio/best"
         )
-        ydl_opts["postprocessors"] = [{
+        ydlOpts["postprocessors"] = [{
             "key": "FFmpegExtractAudio",
             "preferredcodec": "mp3",
             "preferredquality": "192",
         }]
 
       elif mode == "Video Only":
-        selected_v = self.video_menu.get()
-        v_data = self.video_formats.get(selected_v)
-        ydl_opts["format"] = (
-            v_data["id"] if v_data and v_data.get("id") else "bestvideo"
+        selectedV = self._videoMenu.get()
+        vData = self._videoFormats.get(selectedV)
+        ydlOpts["format"] = (
+            vData["id"] if vData and vData.get("id") else "bestvideo"
         )
 
       elif mode == "Custom":
-        selected_v = self.video_menu.get()
-        selected_a = self.audio_menu.get()
+        selectedV = self._videoMenu.get()
+        selected_a = self._audioMenu.get()
 
-        v_data = self.video_formats.get(selected_v)
-        a_data = self.audio_formats.get(selected_a)
+        vData = self._videoFormats.get(selectedV)
+        aData = self._audioFormats.get(selected_a)
 
-        v_id = v_data["id"] if v_data else None
-        a_id = a_data["id"] if a_data else None
+        vId = vData["id"] if vData else None
+        aId = aData["id"] if aData else None
 
-        if v_id and a_id:
-          ydl_opts["format"] = f"{v_id}+{a_id}"
+        if vId and aId:
+          ydlOpts["format"] = f"{vId}+{aId}"
         else:
-          ydl_opts["format"] = "bestvideo+bestaudio/best"
-        ydl_opts["merge_output_format"] = "mkv"
+          ydlOpts["format"] = "bestvideo+bestaudio/best"
+        ydlOpts["merge_output_format"] = "mkv"
 
       try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(ydlOpts) as ydl:
           ydl.download([url])
-        self.status_label.configure(
+        self._statusLabel.configure(
             text="Status: Download Complete!", text_color="green"
         )
       except Exception as e:
-        self.status_label.configure(
+        self._statusLabel.configure(
             text=f"Download Error: {str(e)[:60]}", text_color="red"
         )
       finally:
-        self.download_btn.configure(state="normal")
+        self._downloadBtn.configure(state="normal")
 
     #def __init__(self):
     #    super().__init__()
