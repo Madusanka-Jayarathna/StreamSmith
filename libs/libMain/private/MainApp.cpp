@@ -1,3 +1,63 @@
+#include "libMain/public/MainApp.h"
+#include "libDownloader/public/DownloaderApp.h"
+
+void
+MainApp::run(){
+    Products product = selectedProduct();
+    if(product == MainApp::Products::DOWNLOADER) {
+        DownloaderApp downloader;
+        downloader.run();
+    }
+
+    
+}
+
+MainApp::Products
+MainApp::selectedProduct(){
+    std::string rawInput;
+    int validProduct = 0;
+    bool isValid = false;
+
+    while(!isValid) {
+        showProductSelector();
+        std::getline(std::cin, rawInput);
+        try{
+            size_t chars;
+            validProduct = std::stoi(rawInput, &chars);
+
+            if(chars < rawInput.size() || validProduct > 2 || validProduct < 0){
+                throw std::invalid_argument("ERROR      : Invalid Product selected\n");
+            } else {
+                isValid = true;
+            }
+        }
+        catch (const std::invalid_argument& e) {
+            std::cout <<  e.what() << "\n";
+        }
+        catch (const std::out_of_range& e) {
+            std::cout << "ERROR      : Invalid Product selected\n\n";
+        }
+    }
+    
+    if(validProduct == 1) {
+        return MainApp::Products::DOWNLOADER;
+    } else if (validProduct == 2) {
+        return MainApp::Products::CONVERTER;
+    }
+    return MainApp::Products::EXIT;
+
+}
+
+void
+MainApp::showProductSelector(){
+    std::cout << "1 - Downloader\n";
+    std::cout << "2 - Converter\n";
+    std::cout << "0 - Exit\n";
+
+    std::cout << "Select Product : \t";
+}
+
+/*
 // MainApp.cpp
 #include "libMain/public/MainApp.h"
 #include "libMainView/public/MainView.h"
@@ -45,3 +105,4 @@ void MainApp::showMainView() {
         m_downloaderView = nullptr; // Reset raw pointer
     }
 }
+*/

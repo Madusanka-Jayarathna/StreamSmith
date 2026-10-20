@@ -1,4 +1,26 @@
-// libMain/public/MainApp.h
+#pragma once
+#include <iostream>
+
+class MainApp {
+public:
+    enum class Products {
+        DOWNLOADER,
+        CONVERTER,
+        EXIT
+    };
+
+public:
+    void run();
+    
+private:
+    void showProductSelector();
+    Products selectedProduct();
+};
+
+
+
+/*
+
 #pragma once
 #include <QMainWindow>
 #include <QObject>
@@ -22,3 +44,5 @@ private:
     MainView* m_mainView{nullptr};
     DownloaderView* m_downloaderView{nullptr};
 };
+
+*/

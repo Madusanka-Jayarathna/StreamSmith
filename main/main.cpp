@@ -1,4 +1,15 @@
 #include "libMain/public/MainApp.h"
+
+int
+main( void ) {
+    MainApp app;
+    app.run();
+    return 0;
+}
+
+
+/*
+#include "libMain/public/MainApp.h"
 #include <QApplication>
 
 int main(int argc, char* argv[]) {
@@ -12,3 +23,5 @@ int main(int argc, char* argv[]) {
     // 3. Start the Qt event loop
     return app.exec();
 }
+
+*/
