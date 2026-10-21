@@ -8,8 +8,9 @@ project(StreamSmith)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
-set(CMAKE_AUTOMOC ON)
+#find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Boost CONFIG REQUIRED COMPONENTS filesystem system)
+#set(CMAKE_AUTOMOC ON)
 
 #set(EXTRA_COMPONENT_DIRS "libs")
 

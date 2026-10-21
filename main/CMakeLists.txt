@@ -6,7 +6,7 @@ add_executable(run_streamsmith
 # Links internal libraries and external dependencies to main.cpp
 target_link_libraries(run_streamsmith PRIVATE
     libs
-    Qt6::Widgets
+    #Qt6::Widgets
 )
 
 target_include_directories(run_streamsmith PRIVATE

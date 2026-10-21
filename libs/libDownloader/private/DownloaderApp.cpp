@@ -1,66 +1,97 @@
 #include "libDownloader/public/DownloaderApp.h"
+#include "libUtils/public/Utils.h"
 #include <nlohmann/json.hpp>
+#include <boost/filesystem.hpp>
 
 using json = nlohmann::json;
 
-DownloaderApp::DownloaderApp( void )
+DownloaderApp::DownloaderApp( void ) :
+    _uniqueID(0),
+    _url(""),
+    _downloadPath("")
 {
     _videoFormats.clear();
     _audioFormats.clear(); 
-    _url("");
-    _downloadFolder("~/Downloads"); 
 }
 
 void
 DownloaderApp::run() {
     showProduct();
+    getDownloadPath();
     getURL();
-    startDonwload();
+    startDownload();
     //showAvailableFormats();
 }
 
+void
+DownloaderApp::getDownloadPath() {
+    const std::string msg = "Enter Download Path (default: pwd): ";
+    bool success = false;
+    std::string inStr = getUserInput(msg);
+    while(!success) {
+        inStr = getUserInput(msg);
+        if(inStr.empty()) {
+            inStr = boost::filesystem::current_path().string();
+        }
 
+        success = analyzePath(inStr);
+        if(!success) {
+            std::cout << "ERROR     : Invalid Download Path: " << inStr << std::endl;
+        } else {
+            std::cout << "STATUS    : Donwload Director Selected: " << inStr << std::endl;
+        } 
+    }
+    _downloadPath = inStr;
+}
 
 void
 DownloaderApp::showProduct(){
+    std::cout << "\n";
     std::cout << "--------------------------------------------------" << "\n";
     std::cout << "                  Downloader                      " << "\n";    
     std::cout << "--------------------------------------------------" << "\n\n";
 }
 
+// handle empty map; go back analyze step
 bool
-DownloaderApp::showAvailableFormats(){
-    if (!_videoFormats.empty() || !_audioFormats.empty()) {
+DownloaderApp::showAvailableFormats(bool isVideo, bool isAudio){
+    bool success = false;
+    if (isVideo && !_videoFormats.empty()) {
         std::cout << "\n=== Video Formats Found (" << _videoFormats.size() << ") ===\n";
-        for (const auto& v : _videoFormats) {
-            std::cout << "ID: " << v.formatID 
-                      << " | Res: " << v.resolutionOrBitRate 
-                      << " | Ext: " << v.extension 
-                      << " | Bitrate: " << v.bitRate << "kbps"
-                      << " | Size: " << v.getSize() << "\n";
+        for(const auto& v: _videoFormats) {
+            std::cout   << "ID: " << v.first
+                        << "\t| Res: " << v.second.resolutionOrBitRate
+                        << "\t| Ext: " << v.second.extension
+                        << "\t| BitRate: " << v.second.bitRate << "kbps"
+                        << "\t| Size: " << v.second.getSize() << "\n";
         }
+        success = true;
+    }
 
+    if (isAudio && !_audioFormats.empty()) {
         std::cout << "\n=== Audio Formats Found (" << _audioFormats.size() << ") ===\n";
         for (const auto& a : _audioFormats) {
-            std::cout << "ID: " << a.formatID 
-                      << " | Ext: " << a.extension 
-                      << " | Bitrate: " << a.resolutionOrBitRate 
-                      << " | Size: " << a.getSize() << "\n";
+            std::cout << "ID: " << a.first 
+                      << "\t| Ext: " << a.second.extension 
+                      << "\t| Bitrate: " << a.second.resolutionOrBitRate 
+                      << "\t| Size: " << a.second.getSize() << "\n";
         }
+        success = true;
     }
-    return true;
+
+    return success;
 }
 
 void
 DownloaderApp::getURL() {
-    std::string rawInput;
+    const std::string msg = "Enter URL: ";
     bool success = false;
+    std::string inStr = getUserInput(msg);
     while(!success) {
-        std::cout << "Enter URL: ";
-        std::getline(std::cin, rawInput);
-        success = analyzeURL(rawInput);
+        inStr = getUserInput(msg);
+        success = analyzeURL(inStr);
     }
-    _url = rawInput;
+    _url = inStr;
 }
 
 bool 
@@ -69,33 +100,14 @@ DownloaderApp::isValidUrlSyntax(const std::string& url) {
     return (url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0);
 }
 
-std::pair<int, std::string> 
-DownloaderApp::executeCommand(const std::string& command) {
-    std::string output;
-    char buffer[256];
-
-    FILE* pipe = POPEN(command.c_str(), "r");
-    if (!pipe) {
-        return {-1, ""};
-    }
-
-    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-        output += buffer;
-    }
-
-    int exitCode = PCLOSE(pipe);
-    return {exitCode, output};
-}
-
-
-
 bool
 DownloaderApp::analyzeURL(const std::string& url) {
     _videoFormats.clear();
     _audioFormats.clear();
+    _uniqueID = 0;
 
     if (!isValidUrlSyntax(url)) {
-        std::cout << "invalid URL\n";
+        std::cout << "ERROR     : Invalid URL: " << url << std::endl;
         return false;
     }
 
@@ -104,7 +116,7 @@ DownloaderApp::analyzeURL(const std::string& url) {
     auto [exitCode, jsonOutput] = executeCommand(command);
 
     if (exitCode != 0 || jsonOutput.empty()) {
-        std::cout << "unable extract media information\n";
+        std::cout << "ERROR     : Unable Extract Media Information\n";
         return false;
     }
 
@@ -112,7 +124,7 @@ DownloaderApp::analyzeURL(const std::string& url) {
         json parsedData = json::parse(jsonOutput);
 
         if (!parsedData.contains("formats") || !parsedData["formats"].is_array()) {
-            std::cout << "unable extract media information\n";
+            std::cout << "ERROR     : Unable Extract Media Information\n";
             return false;
         }
 
@@ -142,7 +154,7 @@ DownloaderApp::analyzeURL(const std::string& url) {
                     ? std::to_string(vInfo.height) + "p" 
                     : fmt.value("format_note", "N/A");
 
-                _videoFormats.push_back(vInfo);
+                _videoFormats.emplace(_uniqueID, vInfo);
             }
 
             if (acodec != "none" && vcodec == "none") {
@@ -159,131 +171,173 @@ DownloaderApp::analyzeURL(const std::string& url) {
                 aInfo.bitRate = abr;
                 aInfo.resolutionOrBitRate = std::to_string(abr) + " kbps";
 
-                _audioFormats.push_back(aInfo);
+                _audioFormats.emplace(_uniqueID, aInfo);
             }
+            _uniqueID++;
         }
 
         if (_videoFormats.empty() && _audioFormats.empty()) {
-            std::cout << "unable extract media information\n";
+            std::cout << "ERROR     : Unable Extract Media Information\n";
             return false;
         }
+        std::cout << "STATUS    : Successfully Extracted Media Information: " << url << std::endl;
         return true;
 
     } catch (const json::parse_error&) {
-        std::cout << "unable extract media information\n";
+        std::cout << "ERROR     : Unable Extract Media Information\n";
     }
     return false;
 }
 
+
+
 bool 
-DownloaderApp::executeDownload(const std::string& command) {
-    char buffer[256];
-    FILE* pipe = POPEN(command.c_str(), "r");
-    if (!pipe) {
-        std::cerr << "Error: Unable to spawn download process.\n";
+DownloaderApp::DownloadMedia(DownloaderApp::DownloadMode mode, const int& videoId, const int& audioId) {
+    if (_url.empty()) {
+        std::cout << "ERROR     : Invalid URL: " << _url << "\n";
         return false;
     }
 
-    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-        std::cout << buffer; 
+
+    if (_downloadPath.empty()) {
+        std::cout << "ERROR     : Invalid Donwload Path: " << _downloadPath << "\n";
+        return false;
     }
 
-    int exitCode = PCLOSE(pipe);
-    return (exitCode == 0);
-}
-
-bool 
-DownloaderApp::DownloadMedia(DownloadMode mode, const std::string& videoId = "", const std::string& audioId = "") {
-    if (_url.empty() || _downloadFolder.empty()) {
-        std::cout << "Status: Invalid URL or output folder.\n";
-        return;
-    }
-
-    std::string outTemplate = _downloadFolder + "/%(title)s.%(ext)s";
+    std::string outTemplate = _downloadPath + "/%(title)s.%(ext)s";
     std::string command = "yt-dlp --newline --no-warnings --socket-timeout 15 -o \"" + outTemplate + "\" ";
+    std::string vID;
+    std::string aID;
 
     switch (mode) {
         case DownloaderApp::DownloadMode::HighestQuality:
+        {
             command += "-f \"bestvideo+bestaudio/best\" --merge-output-format mp4 ";
             break;
-
+        }
         case DownloaderApp::DownloadMode::VideoOnly:
-            if (videoId.empty()) {
-                std::cout << "Error: Video ID is required for Video Only download.\n";
+        { 
+            if (videoId < 0) {
+                std::cout << "Error     : Video ID is required for Video Only download.\n";
                 return false;
             }
-            command += "-f \"" + videoId + "\" ";
-            break;
 
+            auto it = _videoFormats.find(videoId);
+            if(it == _videoFormats.end()) {
+                std::cout << "Error     : Valid Video ID is required for Video Only download.\n";
+                return false; 
+            }
+            
+            vID = it->second.formatID;
+            command += "-f \"" + vID + "\" ";
+            break;
+        }
         case DownloaderApp::DownloadMode::AudioOnly:
-            if (audioId.empty()) {
+        {
+            if (audioId < 0) {
                 std::cout << "Error: Audio ID is required for Audio Only download.\n";
                 return false;
             }
-            command += "-f \"" + audioId + "\" -x --audio-format mp3 --audio-quality 192K ";
-            break;
 
+            auto it = _audioFormats.find(audioId);
+            if(it == _audioFormats.end()) {
+                std::cout << "Error     : Valid Audio ID is required for Audio Only download.\n";
+                return false; 
+            }
+            
+            aID = it->second.formatID;
+            command += "-f \"" + aID + "\" -x --audio-format mp3 --audio-quality 192K ";
+            break;
+        }
         case DownloaderApp::DownloadMode::CustomCombine:
-            if (videoId.empty() || audioId.empty()) {
-                std::cout << "Error: Both Video ID and Audio ID are required for Custom download.\n";
+        {
+            if (videoId < 0 || audioId < 0) {
+                std::cout << "Error     : Both Video ID and Audio ID are required for Custom download.\n";
                 return false;
             }
-            command += "-f \"" + videoId + "+" + audioId + "\" --merge-output-format mkv ";
+
+            auto it = _videoFormats.find(videoId);
+            if(it == _videoFormats.end()) {
+                std::cout << "Error     : Valid Video ID is required for custom download.\n";
+                return false; 
+            }
+            vID = it->second.formatID;
+
+            it = _audioFormats.find(audioId);
+            if(it == _audioFormats.end()) {
+                std::cout << "Error     : Valid Audio ID is required for custom download.\n";
+                return false; 
+            }
+            aID = it->second.formatID;
+
+            command += "-f \"" + vID + "+" + aID + "\" --merge-output-format mkv ";
+            break;
+        }
+        default:
             break;
     }
 
     command += "\"" + _url + "\"";
 
-    std::cout << "\nExecuting Command:\n" << command << "\n\n";
-
-    bool success = executeDownload(command);
-
-    if (success) {
-        std::cout << "\nStatus: Download Complete!\n";
+    auto [exitCode, output] = executeCommand(command, true);
+    
+    bool success = false;
+    if (exitCode != 0 || output.empty()) {
+        std::cout << "unable to execute download command\n";
     } else {
-        std::cout << "\nStatus: Download Failed!\n";
+        success = true;
     }
 
+    if (success) {
+        std::cout << "\nSTATUS  : Download Complete!\n";
+    } else {
+        std::cout << "\nERROR   : Download Failed!\n";
+    }
     return success;
 }
 
 void
 DownloaderApp::startDownload() {
-    std::string rawInput;
-    int validMode = 0;
-    bool isValid = false;
-
-    while(!isValid) {
-        std::cout << "\tDownload Modes\n";
-        std::cout << "\t 1 - Best Quality \n";
-        std::cout << "\t 2 - Video Only \n";
-        std::cout << "\t 3 - Audio Only \n";
-        std::cout << "\t 4 - Custom \n\n";
-
-        std::cout << "select Download Mode: ";
-        std::getline(std::cin, rawInput);
-
-        try{
-            size_t chars;
-            validMode = std::stoi(rawInput, &chars);
-
-            if(chars < rawInput.size() || validMode > 4 || validMode < 1){
-                throw std::invalid_argument("ERROR      : Invalid Mode selected\n");
-            } else {
-                isValid = true;
-            }
+    std::cout << "\n";
+    std::cout << "1 - Highest Quality Available\n";
+    std::cout << "2 - Video Only\n";
+    std::cout << "3 - Audio Only\n";
+    std::cout << "4 - Custom\n";
+    const std::string msg = "Select Download Mode: ";
+    int mode = getUserInput(msg);
+    
+    bool valid = false;
+    while(!valid){
+        if(mode < 1 || mode > 4) {
+            std::cout << "ERROR     : Invalid Donwload Mode Selected. Please re-enter\n";
+            mode = getUserInput(msg); 
+            continue;
         }
-        catch (const std::invalid_argument& e) {
-            std::cout <<  e.what() << "\n";
-        }
-        catch (const std::out_of_range& e) {
-            std::cout << "ERROR      : Invalid Mode selected\n\n";
-        }
+        valid = true;
     }
 
-    if (validMode == 1) {
-        std::cout 
+    const std::string vMsg = "Select Required Video (ID): ";
+    const std::string aMsg = "Select Required Audio (ID): ";
+
+    int vID = -1;
+    int aID = -1;
+
+    if (mode == 1) {
+        std::cout << "Downloading Highest Quality Media\n";
+        DownloadMedia(DownloaderApp::DownloadMode::HighestQuality); 
+    } else if (mode == 2) {
+        showAvailableFormats(true, false);
+        vID = getUserInput(vMsg);
+        DownloadMedia(DownloaderApp::DownloadMode::VideoOnly, vID); 
+    } else if (mode == 3) {
+        showAvailableFormats(false, true);
+        aID = getUserInput(aMsg);
+        DownloadMedia(DownloaderApp::DownloadMode::AudioOnly, aID);  
+    } else {
+        showAvailableFormats(true, true);
+        vID = getUserInput(vMsg);
+        aID = getUserInput(aMsg);
+        DownloadMedia(DownloaderApp::DownloadMode::CustomCombine, vID, aID);  
     }
-
-
+    return;
 }

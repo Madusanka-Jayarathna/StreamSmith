@@ -1,5 +1,6 @@
 #include "libMain/public/MainApp.h"
 #include "libDownloader/public/DownloaderApp.h"
+#include "libUtils/public/Utils.h"
 
 void
 MainApp::run(){

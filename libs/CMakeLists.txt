@@ -7,6 +7,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
+
 file(GLOB_RECURSE LIBS_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
@@ -26,7 +27,9 @@ target_include_directories(libs PRIVATE
 )
 
 target_link_libraries(libs PRIVATE
-    Qt6::Widgets
+    #Qt6::Widgets
     nlohmann_json::nlohmann_json
+    Boost::filesystem
+    Boost::system
 )
 

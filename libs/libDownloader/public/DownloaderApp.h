@@ -45,7 +45,7 @@ public:
                 i++;
             }
             char buffer[32];
-            //snprintf(buffer, sizeof(buffer), "%.2f %s", size, units[i]);
+            snprintf(buffer, sizeof(buffer), "%.2f %s", size, units[i]);
             return std::string(buffer);
         }
     }; 
@@ -56,13 +56,21 @@ public:
 
 private:
     void showProduct();
-    bool showAvailableFormats();
+    bool showAvailableFormats(bool isVideo, bool isAudio);
     void getURL();
+    void getDownloadPath();
+    bool analyzePath(const std::string& downloadPath);
     bool isValidUrlSyntax(const std::string& url);
     std::pair<int, std::string> executeCommand(const std::string& command);
     bool analyzeURL(const std::string& url);
+    int getUserInput(const std::string& msg) ;
+    void startDownload();
+    bool DownloadMedia(DownloaderApp::DownloadMode mode, const int& videoId = -1, const int& audioId = -1);
 
 private:
-    std::vector<StreamInfo>         _videoFormats;
-    std::vector<StreamInfo>         _audioFormats;
+    size_t                                          _uniqueID;
+    std::string                                     _url;
+    std::string                                     _downloadPath; 
+    std::unordered_map<size_t, StreamInfo>          _videoFormats;
+    std::unordered_map<size_t, StreamInfo>          _audioFormats;
 };
