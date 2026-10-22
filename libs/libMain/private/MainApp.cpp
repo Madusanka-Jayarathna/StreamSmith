@@ -1,61 +1,53 @@
 #include "libMain/public/MainApp.h"
 #include "libDownloader/public/DownloaderApp.h"
+#include "libConverter/public/ConverterApp.h"
 #include "libUtils/public/Utils.h"
 
 void
 MainApp::run(){
-    Products product = selectedProduct();
-    if(product == MainApp::Products::DOWNLOADER) {
+    showProductTitle();
+    int product = selectedProduct();
+
+    if(product == 1) {
         DownloaderApp downloader;
         downloader.run();
-    }
-
-    
-}
-
-MainApp::Products
-MainApp::selectedProduct(){
-    std::string rawInput;
-    int validProduct = 0;
-    bool isValid = false;
-
-    while(!isValid) {
-        showProductSelector();
-        std::getline(std::cin, rawInput);
-        try{
-            size_t chars;
-            validProduct = std::stoi(rawInput, &chars);
-
-            if(chars < rawInput.size() || validProduct > 2 || validProduct < 0){
-                throw std::invalid_argument("ERROR      : Invalid Product selected\n");
-            } else {
-                isValid = true;
-            }
-        }
-        catch (const std::invalid_argument& e) {
-            std::cout <<  e.what() << "\n";
-        }
-        catch (const std::out_of_range& e) {
-            std::cout << "ERROR      : Invalid Product selected\n\n";
-        }
+    } else if (product == 2) {
+        ConverterApp converter;
+        converter.run();
     }
     
-    if(validProduct == 1) {
-        return MainApp::Products::DOWNLOADER;
-    } else if (validProduct == 2) {
-        return MainApp::Products::CONVERTER;
-    }
-    return MainApp::Products::EXIT;
-
+    return;
 }
 
 void
-MainApp::showProductSelector(){
-    std::cout << "1 - Downloader\n";
-    std::cout << "2 - Converter\n";
-    std::cout << "0 - Exit\n";
+MainApp::showProductTitle(){
+    std::cout << "\n";
+    std::cout << "--------------------------------------------------" << "\n";
+    std::cout << "         Stream Downloader & Converter            " << "\n";    
+    std::cout << "--------------------------------------------------" << "\n";
+}
 
-    std::cout << "Select Product : \t";
+int
+MainApp::selectedProduct(){
+    std::cout << "              1    - Downloader\n";
+    std::cout << "              2    - Converter\n";
+    std::cout << "              0    - Back\n";
+    std::cout << "             -1    - Exit\n\n";
+    
+    const std::string msg = "Select Product: ";
+    int product = -1;
+    bool success = Utils::isNumeric(Utils::getUserInput(msg), product);
+    bool valid = false;
+    while(!valid) {
+        if(!success || (success && product > 2)) {
+            std::cout << "ERROR     : Invalid product Selected. Please re-enter\n\n";
+            success = Utils::isNumeric(Utils::getUserInput(msg), product);
+            continue;
+        }
+        valid = true;
+    }
+    
+    return product;
 }
 
 /*

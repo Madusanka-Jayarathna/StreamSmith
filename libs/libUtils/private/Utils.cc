@@ -1,8 +1,8 @@
 #include "libUtils/public/Utils.h"
 #include <boost/filesystem.hpp>
 
-std::string
-Utils::getUserInput(std::string& msg){
+const std::string
+Utils::getUserInput(const std::string& msg, bool hasDefault){
     std::string rawInput;
     bool success = false;
     
@@ -11,13 +11,15 @@ Utils::getUserInput(std::string& msg){
         std::getline(std::cin, rawInput);
         if(!rawInput.empty()){
             success = true;
+        } else if (hasDefault) {
+            success = true;
         }
     }
     return rawInput;
 }
 
 bool
-Utils::isNumeric(std::string& inStr, int& val) {
+Utils::isNumeric(const std::string& inStr, int& val) {
     if (inStr.empty()) {
         return false;
     }
@@ -65,16 +67,24 @@ Utils::executeCommand(const std::string& command, bool verbose) {
 
 bool 
 Utils::analyzePath(const std::string& path) {
-    if(path.empty) {
-        return false'
+    if(path.empty()) {
+        return false;
     }
 
     boost::filesystem::path p(path); 
     p = boost::filesystem::absolute(p);
     
-    if (boost::filesystem::exists(p) && boost::filesystem::is_directory(p)) {
-        return true;
-    }
-    return false;
+    return boost::filesystem::exists(p) && boost::filesystem::is_directory(p);
+}
 
+bool 
+Utils::analyzeFile(const std::string& path) {
+    if(path.empty()) {
+        return false;
+    }
+
+    boost::filesystem::path p(path); 
+    p = boost::filesystem::absolute(p);
+    
+    return boost::filesystem::exists(p) && boost::filesystem::is_regular_file(p);
 }

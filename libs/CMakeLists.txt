@@ -7,9 +7,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
+# FFmpeg (Homebrew) - no CMake config package or pkg-config available
+find_library(AVFORMAT_LIBRARY avformat REQUIRED)
+find_library(AVCODEC_LIBRARY  avcodec  REQUIRED)
+find_library(AVUTIL_LIBRARY   avutil   REQUIRED)
+
 
 file(GLOB_RECURSE LIBS_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp"
 )
@@ -24,6 +30,7 @@ target_include_directories(libs PUBLIC
 
 target_include_directories(libs PRIVATE
     .
+    /opt/homebrew/include
 )
 
 target_link_libraries(libs PRIVATE
@@ -31,5 +38,8 @@ target_link_libraries(libs PRIVATE
     nlohmann_json::nlohmann_json
     Boost::filesystem
     Boost::system
+    ${AVFORMAT_LIBRARY}
+    ${AVCODEC_LIBRARY}
+    ${AVUTIL_LIBRARY}
 )
 

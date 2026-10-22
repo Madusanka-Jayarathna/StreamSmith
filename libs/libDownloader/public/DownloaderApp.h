@@ -4,16 +4,11 @@
 #include <cstdio>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
-#if defined(_WIN32)
-    #define POPEN _popen
-    #define PCLOSE _pclose
-#else
-    #define POPEN popen
-    #define PCLOSE pclose
-#endif
+
 
 class DownloaderApp{
 public:
@@ -55,11 +50,10 @@ public:
     void run();
 
 private:
-    void showProduct();
+    void showProductTitle();
     bool showAvailableFormats(bool isVideo, bool isAudio);
     void getURL();
     void getDownloadPath();
-    bool analyzePath(const std::string& downloadPath);
     bool isValidUrlSyntax(const std::string& url);
     std::pair<int, std::string> executeCommand(const std::string& command);
     bool analyzeURL(const std::string& url);

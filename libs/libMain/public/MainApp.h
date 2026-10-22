@@ -3,18 +3,11 @@
 
 class MainApp {
 public:
-    enum class Products {
-        DOWNLOADER,
-        CONVERTER,
-        EXIT
-    };
-
-public:
     void run();
     
 private:
-    void showProductSelector();
-    Products selectedProduct();
+    void showProductTitle();
+    int selectedProduct();
 };
 
 

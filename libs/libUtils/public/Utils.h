@@ -1,5 +1,7 @@
-#pragma once 
+#pragma once
 #include <iostream>
+#include <string>
+#include <utility>
 
 #if defined(_WIN32)
     #define POPEN _popen
@@ -16,8 +18,9 @@ public:
     Utils(const Utils&) = delete;
     Utils& operator=(const Utils&) = delete;
 
-    static std::string getUserInput(std::string& msg);
-    static bool isNumeric(std::string& inStr, int& value);
+    static const std::string getUserInput(const std::string& msg, bool hasDefault=false);
+    static bool isNumeric(const std::string& inStr, int& value);
     static std::pair<int, std::string> executeCommand(const std::string& command, bool verbose=false);
-    bool analyzePath(const std::string& path);
+    static bool analyzePath(const std::string& path);
+    static bool analyzeFile(const std::string& path);
 };
