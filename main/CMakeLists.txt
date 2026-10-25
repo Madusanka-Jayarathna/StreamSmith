@@ -1,15 +1,15 @@
-add_executable(run_streamsmith
+# Copyright (c) 2026 Madusanka Jayarathna. All rights reserved.
+# Use of this source code is governed by the MIT license.
+
+add_executable(streamsmith
     main.cpp
 )
 
-# Equivalent to 'REQUIRES' in ESP-IDF
-# Links internal libraries and external dependencies to main.cpp
-target_link_libraries(run_streamsmith PRIVATE
+target_link_libraries(streamsmith PRIVATE
     libs
-    #Qt6::Widgets
 )
 
-target_include_directories(run_streamsmith PRIVATE
+target_include_directories(streamsmith PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/libs
 )

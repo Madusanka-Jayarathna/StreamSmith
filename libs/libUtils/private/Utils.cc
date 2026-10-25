@@ -1,5 +1,77 @@
+// Copyright (c) 2026 Madusanka Jayarathna. All rights reserved.
+// Use of this source code is governed by the MIT license.
+
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <filesystem>
+
+#if defined(_WIN32)
+    #include <windows.h>
+#elif defined(__APPLE__)
+    #include <mach-o/dyld.h>
+    #include <unistd.h>
+    #include <climits>
+#elif defined(__linux__)
+    #include <unistd.h>
+    #include <climits>
+#else
+    #include <unistd.h>
+#endif
+
 #include "libUtils/public/Utils.h"
-#include <boost/filesystem.hpp>
+
+void
+Utils::setupBundledPath(const char* argv0) {
+    namespace fs = std::filesystem;
+    fs::path exeDir;
+
+#if defined(_WIN32)
+    char buffer[MAX_PATH];
+    DWORD length = GetModuleFileNameA(NULL, buffer, MAX_PATH);
+    if (length > 0) {
+        exeDir = fs::path(std::string(buffer, length)).parent_path();
+    }
+#elif defined(__APPLE__)
+    char buffer[PATH_MAX];
+    uint32_t size = sizeof(buffer);
+    if (_NSGetExecutablePath(buffer, &size) == 0) {
+        std::error_code ec;
+        exeDir = fs::canonical(fs::path(buffer), ec).parent_path();
+    }
+#elif defined(__linux__)
+    char buffer[PATH_MAX];
+    ssize_t count = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if (count > 0) {
+        buffer[count] = '\0';
+        std::error_code ec;
+        exeDir = fs::canonical(fs::path(buffer), ec).parent_path();
+    }
+#endif
+
+    // Fallback using argv0 if platform detection did not resolve
+    if (exeDir.empty() && argv0 && argv0[0] != '\0') {
+        std::error_code ec;
+        exeDir = fs::absolute(fs::path(argv0), ec).parent_path();
+    }
+
+    if (exeDir.empty()) {
+        return;
+    }
+
+#if defined(_WIN32)
+    std::string currentPath = std::getenv("PATH") ? std::getenv("PATH") : "";
+    std::string newPath = exeDir.string() + ";" + currentPath;
+    _putenv_s("PATH", newPath.c_str());
+#else
+    const char* currentPath = std::getenv("PATH");
+    std::string newPath = exeDir.string() + ":" + (currentPath ? currentPath : "");
+    setenv("PATH", newPath.c_str(), 1);
+#endif
+}
 
 const std::string
 Utils::getUserInput(const std::string& msg, bool hasDefault){
@@ -56,9 +128,8 @@ Utils::executeCommand(const std::string& command, bool verbose) {
     while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
         if(verbose) {
             std::cout << buffer;
-        } else {
-            output += buffer;
         }
+        output += buffer;
     }
 
     int exitCode = PCLOSE(pipe);
@@ -71,10 +142,14 @@ Utils::analyzePath(const std::string& path) {
         return false;
     }
 
-    boost::filesystem::path p(path); 
-    p = boost::filesystem::absolute(p);
+    std::filesystem::path p(path); 
+    std::error_code ec;
+    p = std::filesystem::absolute(p, ec);
+    if (ec) {
+        return false;
+    }
     
-    return boost::filesystem::exists(p) && boost::filesystem::is_directory(p);
+    return std::filesystem::exists(p, ec) && std::filesystem::is_directory(p, ec);
 }
 
 bool 
@@ -83,8 +158,12 @@ Utils::analyzeFile(const std::string& path) {
         return false;
     }
 
-    boost::filesystem::path p(path); 
-    p = boost::filesystem::absolute(p);
+    std::filesystem::path p(path); 
+    std::error_code ec;
+    p = std::filesystem::absolute(p, ec);
+    if (ec) {
+        return false;
+    }
     
-    return boost::filesystem::exists(p) && boost::filesystem::is_regular_file(p);
+    return std::filesystem::exists(p, ec) && std::filesystem::is_regular_file(p, ec);
 }

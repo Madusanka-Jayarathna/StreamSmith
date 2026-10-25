@@ -1,9 +1,38 @@
+// Copyright (c) 2026 Madusanka Jayarathna. All rights reserved.
+// Use of this source code is governed by the MIT license.
+
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <iostream>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "libDownloader/public/DownloaderApp.h"
 #include "libUtils/public/Utils.h"
 #include <nlohmann/json.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 using json = nlohmann::json;
+
+std::string
+DownloaderApp::StreamInfo::getSize() const {
+    if(sizeBytes <= 0) {
+        return "unknown size";
+    }
+    const char* units[] = {"B", "KB", "MB", "GB", "TB"};
+    double size = static_cast<double>(sizeBytes);
+    int i = 0;
+    while (size >= 1024.0 && i < 4) {
+        size /= 1024.0;
+        i++;
+    }
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "%.2f %s", size, units[i]);
+    return std::string(buffer);
+}
 
 DownloaderApp::DownloaderApp( void ) :
     _uniqueID(0),
@@ -20,7 +49,6 @@ DownloaderApp::run() {
     getDownloadPath();
     getURL();
     startDownload();
-    //showAvailableFormats();
 }
 
 void
@@ -31,7 +59,7 @@ DownloaderApp::getDownloadPath() {
     while(!success) {
         inStr = Utils::getUserInput(msg, true);
         if(inStr.empty()) {
-            inStr = boost::filesystem::current_path().string();
+            inStr = std::filesystem::current_path().string();
         }
 
         success = Utils::analyzePath(inStr);
@@ -111,7 +139,16 @@ DownloaderApp::analyzeURL(const std::string& url) {
         return false;
     }
 
-    std::string command = "yt-dlp --dump-json --quiet --no-warnings --socket-timeout 15 --no-playlist --ies \"all,-generic\" \"" + url + "\"";
+    std::string command =
+        "yt-dlp"
+        " --dump-json"
+        " --quiet"
+        " --no-warnings"
+        " --socket-timeout 15"
+        " --no-playlist"
+        " --impersonate firefox"
+        " \"" + url + "\"";
+    //std::string command = "yt-dlp --dump-json --quiet --no-warnings --socket-timeout 15 --no-playlist --ies \"all,-generic\" \"" + url + "\"";
     auto [exitCode, jsonOutput] = Utils::executeCommand(command);
 
     if (exitCode != 0 || jsonOutput.empty()) {
@@ -210,8 +247,8 @@ DownloaderApp::DownloadMedia(DownloaderApp::DownloadMode mode, const int& videoI
         return false;
     }
 
-    std::string outTemplate = _downloadPath + "/%(title)s.%(ext)s";
-    std::string command = "yt-dlp --newline --no-warnings --socket-timeout 15 -o \"" + outTemplate + "\" ";
+    std::string outTemplate = _downloadPath + "/%(title).30s.%(ext)s";
+    std::string command = "yt-dlp --newline --no-warnings --socket-timeout 15 --restrict-filenames --trim-filenames 30 -o \"" + outTemplate + "\" ";
     std::string vID;
     std::string aID;
 

@@ -1,0 +1,149 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    name: Build Linux (x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ libavformat-dev libavcodec-dev libavutil-dev xz-utils curl
+
+      - name: Configure and Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+
+      - name: Bundle Binaries
+        run: |
+          mkdir -p dist
+          cp build/main/streamsmith dist/streamsmith
+
+          # Download standalone yt-dlp
+          curl -L -o dist/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp
+          chmod +x dist/yt-dlp
+
+          # Download static ffmpeg
+          curl -L -o ffmpeg.tar.xz https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz
+          tar -xf ffmpeg.tar.xz
+          cp ffmpeg-master-latest-linux64-gpl/bin/ffmpeg dist/
+          chmod +x dist/ffmpeg dist/streamsmith
+
+          # Create release tarball
+          tar -czvf streamsmith-linux-x64.tar.gz -C dist .
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamsmith-linux-x64
+          path: streamsmith-linux-x64.tar.gz
+
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          brew install cmake ffmpeg
+
+      - name: Configure and Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+
+      - name: Bundle Binaries
+        run: |
+          mkdir -p dist
+          cp build/main/streamsmith dist/streamsmith
+
+          # Download standalone yt-dlp (macOS universal binary)
+          curl -L -o dist/yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
+          chmod +x dist/yt-dlp
+
+          # Copy ffmpeg from Homebrew
+          cp $(which ffmpeg) dist/
+          chmod +x dist/ffmpeg dist/streamsmith
+
+          # Create zip archive
+          cd dist && zip -r ../streamsmith-macos.zip . && cd ..
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamsmith-macos
+          path: streamsmith-macos.zip
+
+  build-windows:
+    name: Build Windows (x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install FFmpeg via vcpkg
+        run: |
+          vcpkg install ffmpeg[avcodec,avformat]:x64-windows
+
+      - name: Configure and Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+          cmake --build build --config Release
+
+      - name: Bundle Binaries
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item build/main/Release/streamsmith.exe dist/streamsmith.exe
+
+          # Copy vcpkg DLLs if dynamically linked
+          if (Test-Path build/main/Release/*.dll) {
+            Copy-Item build/main/Release/*.dll dist/
+          }
+
+          # Download standalone yt-dlp
+          Invoke-WebRequest -Uri "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile dist/yt-dlp.exe
+
+          # Download static ffmpeg
+          Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" -OutFile ffmpeg.zip
+          Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg_unzipped
+          Copy-Item ffmpeg_unzipped/*/bin/ffmpeg.exe dist/ffmpeg.exe
+
+          Compress-Archive -Path dist/* -DestinationPath streamsmith-windows-x64.zip
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamsmith-windows-x64
+          path: streamsmith-windows-x64.zip
+
+  publish-release:
+    name: Publish Release Assets
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

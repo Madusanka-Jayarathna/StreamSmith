@@ -1,5 +1,8 @@
+// Copyright (c) 2026 Madusanka Jayarathna. All rights reserved.
+// Use of this source code is governed by the MIT license.
+
 #pragma once
-#include <iostream>
+
 #include <string>
 #include <utility>
 
@@ -18,6 +21,7 @@ public:
     Utils(const Utils&) = delete;
     Utils& operator=(const Utils&) = delete;
 
+    static void setupBundledPath(const char* argv0 = nullptr);
     static const std::string getUserInput(const std::string& msg, bool hasDefault=false);
     static bool isNumeric(const std::string& inStr, int& value);
     static std::pair<int, std::string> executeCommand(const std::string& command, bool verbose=false);

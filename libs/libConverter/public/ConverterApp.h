@@ -1,16 +1,30 @@
+// Copyright (c) 2026 Madusanka Jayarathna. All rights reserved.
+// Use of this source code is governed by the MIT license.
+
 #pragma once
 
-#include <cstdint>
-#include <cstdio>
-#include <iostream>
-#include <string>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-
-
-
 class ConverterApp{
+public:
+    struct MediaInfo {
+        double      duration{0};
+        int64_t     vBitRate{-1};
+        int64_t     aBitRate{-1};
+        int64_t     vSize{-1};
+        int64_t     aSize{-1};
+        int64_t     crf{0};
+        int64_t     width{-1};
+        int64_t     height{-1};
+        int64_t     size{-1};
+        bool        hasVStream{false};
+        bool        hasAStream{false};
+        std::string fileName;
+        std::string vDecoder;
+        std::string vCodec;
+        std::string aDecoder;
+        std::string aCodec;
+
+    };
+
 public:
     ConverterApp();
     void run();
@@ -18,22 +32,14 @@ public:
 private:
     void showProductTitle();
     void getFilePath();
-    void analyzeMediaFile();
-
-    //bool showAvailableFormats(bool isVideo, bool isAudio);
-    //void getURL();
-    //void getDownloadPath();
-    //bool isValidUrlSyntax(const std::string& url);
-    //std::pair<int, std::string> executeCommand(const std::string& command);
-    //bool analyzeURL(const std::string& url);
-    //int getUserInput(const std::string& msg) ;
-    //void startDownload();
-    //bool DownloadMedia(DownloaderApp::DownloadMode mode, const int& videoId = -1, const int& audioId = -1);
+    bool analyzeMediaFile();
+    void showMediaInfo(const MediaInfo& info);
+    bool getTargetMediaInfo();
+    bool runConversion();
 
 private:
-    //size_t                                          _uniqueID;
-    //std::string                                     _url;
-    std::string                                     _mediaFile; 
-    //std::unordered_map<size_t, StreamInfo>          _videoFormats;
-    //std::unordered_map<size_t, StreamInfo>          _audioFormats;
+    std::string                                     _mediaFile;
+    std::string                                     _mediaDir;
+    MediaInfo                                       _originalFile;
+    MediaInfo                                       _targetFile;
 };
